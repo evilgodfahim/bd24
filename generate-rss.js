@@ -13,7 +13,7 @@ fs.mkdirSync("./feeds", { recursive: true });
 async function fetchWithFlareSolverr(url) {
   try {
     console.log(`Fetching ${url} via FlareSolverr...`);
-    
+
     const response = await axios.post(
       `${flareSolverrURL}/v1`,
       {
@@ -43,39 +43,67 @@ async function generateRSS() {
   try {
     // Fetch page content using FlareSolverr
     const htmlContent = await fetchWithFlareSolverr(targetURL);
-    
+
     const $ = cheerio.load(htmlContent);
     const items = [];
 
-    // Scrape all articles using the new selectors
-    $("div.card").each((_, el) => {
-      const $card = $(el);
+    // Scrape lead article from Cat-lead section
+    $("section.Cat-lead .Cat-lead-wrapper").each((_, el) => {
+      const $wrapper = $(el);
+      const $link = $wrapper.find("a").first();
       
-      // Get title from h5.card-title or h1.card-title
-      const titleElement = $card.find("h5.card-title a, h1.card-title a").first();
-      const title = titleElement.text().trim();
-      const href = titleElement.attr("href");
-      
-      // Get description/intro if available
-      const intro = $card.find("div.card-intro").text().trim() || 
-                    $card.find("p.intro").text().trim();
-      
-      // Get author if available
-      const author = $card.find("div.author a").text().trim();
-      
-      // Get date if available
-      const date = $card.find("div.card-info span").first().text().trim();
+      const title = $link.find("h1").text().trim();
+      const href = $link.attr("href");
+      const description = $link.find("p").text().trim();
+      const imgSrc = $link.find("img").attr("src");
 
       if (title && href) {
         const link = href.startsWith("http") ? href : baseURL + href;
-        const description = intro || (author ? `By ${author}` : "");
-        
         items.push({ 
           title, 
           link, 
           description,
-          author,
-          date
+          image: imgSrc
+        });
+      }
+    });
+
+    // Scrape sidebar articles from Cat-list
+    $("section.Cat-lead .Cat-list").each((_, el) => {
+      const $list = $(el);
+      const $link = $list.find("a").first();
+      
+      const title = $link.find("h5").text().trim();
+      const href = $link.attr("href");
+      const imgSrc = $link.find("img").attr("src");
+
+      if (title && href) {
+        const link = href.startsWith("http") ? href : baseURL + href;
+        items.push({ 
+          title, 
+          link, 
+          description: "",
+          image: imgSrc
+        });
+      }
+    });
+
+    // Scrape "Read More" section articles
+    $("section.Cat-readMore .rm-container").each((_, el) => {
+      const $container = $(el);
+      const $link = $container.find("a").first();
+      
+      const title = $link.find("h5, h4, h3").text().trim();
+      const href = $link.attr("href");
+      const imgSrc = $link.find("img").attr("src");
+
+      if (title && href) {
+        const link = href.startsWith("http") ? href : baseURL + href;
+        items.push({ 
+          title, 
+          link, 
+          description: "",
+          image: imgSrc
         });
       }
     });
@@ -89,7 +117,6 @@ async function generateRSS() {
         title: "No articles found yet",
         link: baseURL,
         description: "RSS feed could not scrape any articles.",
-        author: "",
         date: new Date().toUTCString()
       });
     }
@@ -108,9 +135,9 @@ async function generateRSS() {
       feed.item({
         title: item.title,
         url: item.link,
-        description: item.description,
-        author: item.author || undefined,
-        date: item.date || new Date()
+        description: item.description || "",
+        date: new Date(),
+        enclosure: item.image ? { url: item.image } : undefined
       });
     });
 
