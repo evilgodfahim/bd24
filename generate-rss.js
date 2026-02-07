@@ -3,8 +3,8 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const RSS = require("rss");
 
-const baseURL = "https://www.thedailystar.net";
-const targetURL = "https://www.thedailystar.net/opinion";
+const baseURL = "https://bdnews24.com";
+const targetURL = "https://bdnews24.com/opinion";
 const flareSolverrURL = process.env.FLARESOLVERR_URL || "http://localhost:8191";
 
 // Ensure feeds folder exists
